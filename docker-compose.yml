@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: pacs-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - pacs-network
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  orthanc:
+    image: jodogne/orthanc-plugins:latest
+    container_name: pacs-orthanc
+    ports:
+      - "8042:8042"
+      - "4242:4242"
+    volumes:
+      - ./orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
+      - ./orthanc/webhook.py:/etc/orthanc/webhook.py:ro
+      - orthanc-data:/var/lib/orthanc/db
+      - orthanc-cache:/var/lib/orthanc/cache
+    networks:
+      - pacs-network
+    depends_on:
+      - pacs-api
+
+  pacs-api:
+    build:
+      context: ./backend
+      dockerfile: PACS.API/Dockerfile
+    container_name: pacs-api
+    ports:
+      - "5000:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=PACSDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - Orthanc__Url=http://orthanc:8042
+      - Orthanc__Username=orthanc
+      - Orthanc__Password=orthanc
+    networks:
+      - pacs-network
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  pacs-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pacs-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=http://localhost:5000/api
+    networks:
+      - pacs-network
+    depends_on:
+      - pacs-api
+
+volumes:
+  sqlserver-data:
+  orthanc-data:
+  orthanc-cache:
+
+networks:
+  pacs-network:
+    driver: bridge

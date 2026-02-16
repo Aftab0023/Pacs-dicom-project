@@ -1,0 +1,83 @@
+{
+  "Name": "PACS Orthanc Server",
+  "StorageDirectory": "/var/lib/orthanc/db",
+  "IndexDirectory": "/var/lib/orthanc/db",
+  "StorageCompression": false,
+  "MaximumStorageSize": 0,
+  "MaximumPatientCount": 0,
+  "HttpPort": 8042,
+  "DicomPort": 4242,
+  "RemoteAccessAllowed": true,
+  "AuthenticationEnabled": true,
+  "RegisteredUsers": {
+    "orthanc": "orthanc",
+    "admin": "admin"
+  },
+  "DicomWeb": {
+    "Enable": true,
+    "Root": "/dicom-web/",
+    "EnableWado": true,
+    "WadoRoot": "/wado",
+    "Ssl": false,
+    "QidoCaseSensitive": false,
+    "Host": "0.0.0.0",
+    "Port": 8042
+  },
+  "DicomModalities": {},
+  "OrthancPeers": {},
+  "HttpTimeout": 60,
+  "HttpVerbose": false,
+  "HttpsVerifyPeers": true,
+  "UserMetadata": {},
+  "StableAge": 10,
+  "StrictAetComparison": false,
+  "DicomScpTimeout": 30,
+  "SaveJobs": true,
+  "JobsHistorySize": 10,
+  "LuaScripts": [],
+  "Plugins": [
+    "/usr/share/orthanc/plugins"
+  ],
+  "ConcurrentJobs": 2,
+  "HttpRequestTimeout": 30,
+  "DefaultEncoding": "Latin1",
+  "AcceptedTransferSyntaxes": ["1.2.840.10008.1.*"],
+  "UnknownSopClassAccepted": false,
+  "DicomScuTimeout": 10,
+  "DicomScuPreferredTransferSyntax": "1.2.840.10008.1.2.1",
+  "DicomThreadsCount": 4,
+  "StoreMD5ForAttachments": true,
+  "LimitFindResults": 0,
+  "LimitFindInstances": 0,
+  "LogExportedResources": false,
+  "KeepAlive": true,
+  "TcpNoDelay": true,
+  "HttpThreadsCount": 50,
+  "StoreDicom": true,
+  "DicomAssociationCloseDelay": 5,
+  "QueryRetrieveSize": 100,
+  "CaseSensitivePN": false,
+  "LoadPrivateDictionary": true,
+  "Dictionary": {},
+  "SynchronousCMove": true,
+  "JobsEngineThreadsCount": {
+    "ResourceModification": 1
+  },
+  "DicomCache": {
+    "MaximumPatientCount": 0,
+    "MaximumStorageSize": 128
+  },
+  "Warnings": {
+    "W001_TagsBeingReadFromStorage": true,
+    "W002_InconsistentDicomTagsInDb": true
+  },
+  "WebViewer": {
+    "CachePath": "/var/lib/orthanc/cache",
+    "CacheSize": 100
+  },
+  "Python": {
+    "Path": "/usr/share/orthanc/plugins/python",
+    "Verbose": false,
+    "Script": "/etc/orthanc/webhook.py"
+  }
+}
