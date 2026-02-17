@@ -36,7 +36,7 @@
   "JobsHistorySize": 10,
   "LuaScripts": [],
   "Plugins": [
-    "/usr/share/orthanc/plugins"
+    "/usr/local/share/orthanc/plugins"
   ],
   "ConcurrentJobs": 2,
   "HttpRequestTimeout": 30,
@@ -74,6 +74,10 @@
   "WebViewer": {
     "CachePath": "/var/lib/orthanc/cache",
     "CacheSize": 100
+  },
+  "OHIF": {
+    "DataSource": "dicom-web",
+    "RouterBasename": "/ohif/"
   },
   "Python": {
     "Path": "/usr/share/orthanc/plugins/python",

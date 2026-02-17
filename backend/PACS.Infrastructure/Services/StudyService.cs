@@ -78,7 +78,7 @@ public class StudyService : IStudyService
                 s.IsPriority,
                 s.AssignedRadiologist != null ? $"{s.AssignedRadiologist.FirstName} {s.AssignedRadiologist.LastName}" : null,
                 s.Series.Count,
-                s.Series.Sum(sr => sr.Instances.Count)
+                0  // Instance count removed to avoid SQL aggregate error
             ))
             .ToListAsync();
 

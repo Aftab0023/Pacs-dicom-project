@@ -98,7 +98,17 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<PACSDbContext>();
-    db.Database.Migrate();
+    try
+    {
+        // Ensure database is created
+        db.Database.EnsureCreated();
+        Console.WriteLine("Database ensured created successfully");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error creating database: {ex.Message}");
+        throw;
+    }
 }
 
 app.Run();

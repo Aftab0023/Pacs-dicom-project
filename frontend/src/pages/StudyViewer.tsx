@@ -91,7 +91,7 @@ export default function StudyViewer() {
               <p className="text-sm">DICOMweb URL: {orthancUrl}</p>
               <p className="text-sm">Study UID: {study.studyInstanceUID}</p>
               <button
-                onClick={() => window.open(`http://localhost:3000/viewer?StudyInstanceUIDs=${study.studyInstanceUID}`, '_blank')}
+                onClick={() => window.open(`http://localhost:8042/ohif/viewer?StudyInstanceUIDs=${study.studyInstanceUID}`, '_blank')}
                 className="mt-4 px-6 py-3 bg-medical-accent hover:bg-blue-600 rounded-lg"
               >
                 Open in OHIF Viewer

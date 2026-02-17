@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PACS.Core.DTOs;
 using PACS.Core.Entities;
 using PACS.Core.Interfaces;
@@ -13,12 +14,14 @@ public class OrthancService : IOrthancService
 {
     private readonly HttpClient _httpClient;
     private readonly PACSDbContext _context;
+    private readonly ILogger<OrthancService> _logger;
     private readonly string _orthancUrl;
 
-    public OrthancService(HttpClient httpClient, PACSDbContext context, IConfiguration configuration)
+    public OrthancService(HttpClient httpClient, PACSDbContext context, IConfiguration configuration, ILogger<OrthancService> logger)
     {
         _httpClient = httpClient;
         _context = context;
+        _logger = logger;
         _orthancUrl = configuration["Orthanc:Url"] ?? "http://localhost:8042";
 
         var username = configuration["Orthanc:Username"] ?? "orthanc";
@@ -55,70 +58,101 @@ public class OrthancService : IOrthancService
 
     public async Task ProcessNewStudyAsync(string orthancStudyId)
     {
-        var studyMetadata = await GetStudyMetadataAsync(orthancStudyId);
-        if (studyMetadata == null) return;
-
-        var patientMetadata = await GetPatientMetadataAsync(studyMetadata.ParentPatient);
-        if (patientMetadata == null) return;
-
-        // Extract DICOM tags
-        var studyInstanceUID = studyMetadata.MainDicomTags.GetValueOrDefault("StudyInstanceUID", "");
-        var studyDate = studyMetadata.MainDicomTags.GetValueOrDefault("StudyDate", "");
-        var studyDescription = studyMetadata.MainDicomTags.GetValueOrDefault("StudyDescription", "");
-        var accessionNumber = studyMetadata.MainDicomTags.GetValueOrDefault("AccessionNumber", "");
-
-        var patientName = patientMetadata.MainDicomTags.GetValueOrDefault("PatientName", "");
-        var patientId = patientMetadata.MainDicomTags.GetValueOrDefault("PatientID", "");
-        var patientBirthDate = patientMetadata.MainDicomTags.GetValueOrDefault("PatientBirthDate", "");
-        var patientSex = patientMetadata.MainDicomTags.GetValueOrDefault("PatientSex", "");
-
-        // Parse patient name (DICOM format: LastName^FirstName)
-        var nameParts = patientName.Split('^');
-        var lastName = nameParts.Length > 0 ? nameParts[0] : "";
-        var firstName = nameParts.Length > 1 ? nameParts[1] : "";
-
-        // Check if study already exists
-        var existingStudy = await _context.Studies.FirstOrDefaultAsync(s => s.StudyInstanceUID == studyInstanceUID);
-        if (existingStudy != null) return;
-
-        // Find or create patient
-        var patient = await _context.Patients.FirstOrDefaultAsync(p => p.MRN == patientId);
-        if (patient == null)
+        try
         {
-            patient = new Patient
+            _logger.LogInformation($"Starting to process study: {orthancStudyId}");
+            
+            var studyMetadata = await GetStudyMetadataAsync(orthancStudyId);
+            if (studyMetadata == null)
             {
-                MRN = patientId,
-                FirstName = firstName,
-                LastName = lastName,
-                DateOfBirth = ParseDicomDate(patientBirthDate),
-                Gender = patientSex,
+                _logger.LogWarning($"Could not retrieve study metadata for: {orthancStudyId}");
+                return;
+            }
+
+            var patientMetadata = await GetPatientMetadataAsync(studyMetadata.ParentPatient);
+            if (patientMetadata == null)
+            {
+                _logger.LogWarning($"Could not retrieve patient metadata for: {studyMetadata.ParentPatient}");
+                return;
+            }
+
+            // Extract DICOM tags
+            var studyInstanceUID = studyMetadata.MainDicomTags.GetValueOrDefault("StudyInstanceUID", "");
+            var studyDate = studyMetadata.MainDicomTags.GetValueOrDefault("StudyDate", "");
+            var studyDescription = studyMetadata.MainDicomTags.GetValueOrDefault("StudyDescription", "");
+            var accessionNumber = studyMetadata.MainDicomTags.GetValueOrDefault("AccessionNumber", "");
+
+            var patientName = patientMetadata.MainDicomTags.GetValueOrDefault("PatientName", "");
+            var patientId = patientMetadata.MainDicomTags.GetValueOrDefault("PatientID", "");
+            var patientBirthDate = patientMetadata.MainDicomTags.GetValueOrDefault("PatientBirthDate", "");
+            var patientSex = patientMetadata.MainDicomTags.GetValueOrDefault("PatientSex", "");
+
+            _logger.LogInformation($"Processing study UID: {studyInstanceUID}, Patient: {patientName}");
+
+            // Parse patient name (DICOM format: LastName^FirstName)
+            var nameParts = patientName.Split('^');
+            var lastName = nameParts.Length > 0 ? nameParts[0] : "";
+            var firstName = nameParts.Length > 1 ? nameParts[1] : "";
+
+            // Check if study already exists
+            var existingStudy = await _context.Studies.FirstOrDefaultAsync(s => s.StudyInstanceUID == studyInstanceUID);
+            if (existingStudy != null)
+            {
+                _logger.LogInformation($"Study already exists: {studyInstanceUID}");
+                return;
+            }
+
+            // Find or create patient
+            var patient = await _context.Patients.FirstOrDefaultAsync(p => p.MRN == patientId);
+            if (patient == null)
+            {
+                _logger.LogInformation($"Creating new patient: {patientId}");
+                patient = new Patient
+                {
+                    MRN = patientId,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    DateOfBirth = ParseDicomDate(patientBirthDate),
+                    Gender = patientSex,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Patients.Add(patient);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation($"Patient created with ID: {patient.PatientId}");
+            }
+
+            // Create study
+            _logger.LogInformation($"Creating study for patient ID: {patient.PatientId}");
+            var study = new Study
+            {
+                StudyInstanceUID = studyInstanceUID,
+                PatientId = patient.PatientId,
+                StudyDate = ParseDicomDate(studyDate),
+                Modality = studyMetadata.MainDicomTags.GetValueOrDefault("Modality", ""),
+                Description = studyDescription,
+                AccessionNumber = accessionNumber,
+                OrthancStudyId = orthancStudyId,
+                Status = "Pending",
+                IsPriority = false,
                 CreatedAt = DateTime.UtcNow
             };
-            _context.Patients.Add(patient);
+            _context.Studies.Add(study);
             await _context.SaveChangesAsync();
+            _logger.LogInformation($"Study created with ID: {study.StudyId}");
+
+            // Process series
+            _logger.LogInformation($"Processing {studyMetadata.Series.Count} series");
+            foreach (var seriesId in studyMetadata.Series)
+            {
+                await ProcessSeriesAsync(seriesId, study.StudyId);
+            }
+            
+            _logger.LogInformation($"Successfully completed processing study: {orthancStudyId}");
         }
-
-        // Create study
-        var study = new Study
+        catch (Exception ex)
         {
-            StudyInstanceUID = studyInstanceUID,
-            PatientId = patient.PatientId,
-            StudyDate = ParseDicomDate(studyDate),
-            Modality = studyMetadata.MainDicomTags.GetValueOrDefault("Modality", ""),
-            Description = studyDescription,
-            AccessionNumber = accessionNumber,
-            OrthancStudyId = orthancStudyId,
-            Status = "Pending",
-            IsPriority = false,
-            CreatedAt = DateTime.UtcNow
-        };
-        _context.Studies.Add(study);
-        await _context.SaveChangesAsync();
-
-        // Process series
-        foreach (var seriesId in studyMetadata.Series)
-        {
-            await ProcessSeriesAsync(seriesId, study.StudyId);
+            _logger.LogError(ex, $"Error processing study {orthancStudyId}: {ex.Message}");
+            throw;
         }
     }
 
@@ -126,8 +160,14 @@ public class OrthancService : IOrthancService
     {
         try
         {
+            _logger.LogInformation($"Processing series: {orthancSeriesId}");
+            
             var seriesData = await _httpClient.GetFromJsonAsync<Dictionary<string, object>>($"{_orthancUrl}/series/{orthancSeriesId}");
-            if (seriesData == null) return;
+            if (seriesData == null)
+            {
+                _logger.LogWarning($"Could not retrieve series data for: {orthancSeriesId}");
+                return;
+            }
 
             var mainDicomTags = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(seriesData["MainDicomTags"].ToString() ?? "{}");
             var instances = System.Text.Json.JsonSerializer.Deserialize<List<string>>(seriesData["Instances"].ToString() ?? "[]");
@@ -147,17 +187,23 @@ public class OrthancService : IOrthancService
             };
             _context.Series.Add(series);
             await _context.SaveChangesAsync();
+            _logger.LogInformation($"Series created with ID: {series.SeriesId}");
 
             // Process instances
-            if (instances != null)
+            if (instances != null && instances.Count > 0)
             {
+                _logger.LogInformation($"Processing {instances.Count} instances");
                 foreach (var instanceId in instances)
                 {
                     await ProcessInstanceAsync(instanceId, series.SeriesId);
                 }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error processing series {orthancSeriesId}: {ex.Message}");
+            throw;
+        }
     }
 
     private async Task ProcessInstanceAsync(string orthancInstanceId, int seriesId)
@@ -165,7 +211,11 @@ public class OrthancService : IOrthancService
         try
         {
             var instanceData = await _httpClient.GetFromJsonAsync<Dictionary<string, object>>($"{_orthancUrl}/instances/{orthancInstanceId}");
-            if (instanceData == null) return;
+            if (instanceData == null)
+            {
+                _logger.LogWarning($"Could not retrieve instance data for: {orthancInstanceId}");
+                return;
+            }
 
             var mainDicomTags = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(instanceData["MainDicomTags"].ToString() ?? "{}");
 
@@ -183,8 +233,13 @@ public class OrthancService : IOrthancService
             };
             _context.Instances.Add(instance);
             await _context.SaveChangesAsync();
+            _logger.LogInformation($"Instance created: {sopInstanceUID}");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error processing instance {orthancInstanceId}: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<string> GetDicomWebUrlAsync(string studyInstanceUID)
