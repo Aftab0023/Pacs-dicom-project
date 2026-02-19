@@ -60,3 +60,11 @@ public record WorklistFilterDto(
     int Page = 1,
     int PageSize = 20
 );
+
+public record WorklistStatsDto
+{
+    public int PendingCount { get; set; }
+    public int PriorityCount { get; set; }
+    public int ReportedCount { get; set; }
+    public int TotalStudiesCount { get; set; }
+}

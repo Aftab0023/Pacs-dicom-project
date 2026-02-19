@@ -17,6 +17,18 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// Add this below your request interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const authApi = {
   login: async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password })
@@ -47,6 +59,10 @@ export const worklistApi = {
   setPriority: async (studyId: number, isPriority: boolean) => {
     const response = await api.put(`/worklist/${studyId}/priority`, { isPriority })
     return response.data
+  },
+  getStats: async () => {
+    const response = await api.get('/worklist/stats');
+    return response.data;
   }
 }
 
@@ -75,6 +91,7 @@ export const reportApi = {
     const response = await api.get(`/report/${reportId}/pdf`, { responseType: 'blob' })
     return response.data
   }
+  
 }
 
 export default api

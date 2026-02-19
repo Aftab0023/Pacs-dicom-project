@@ -59,6 +59,7 @@ services:
     volumes:
       - ./orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
       - ./orthanc/webhook.py:/etc/orthanc/webhook.py:ro
+      - ./orthanc/webhook.lua:/etc/orthanc/webhook.lua:ro
       - orthanc-data:/var/lib/orthanc/db
       - orthanc-cache:/var/lib/orthanc/cache
     networks:

@@ -34,7 +34,9 @@
   "DicomScpTimeout": 30,
   "SaveJobs": true,
   "JobsHistorySize": 10,
-  "LuaScripts": [],
+  "LuaScripts": [
+    "/etc/orthanc/webhook.lua"
+  ],
   "Plugins": [
     "/usr/local/share/orthanc/plugins"
   ],
@@ -78,10 +80,5 @@
   "OHIF": {
     "DataSource": "dicom-web",
     "RouterBasename": "/ohif/"
-  },
-  "Python": {
-    "Path": "/usr/share/orthanc/plugins/python",
-    "Verbose": false,
-    "Script": "/etc/orthanc/webhook.py"
   }
 }

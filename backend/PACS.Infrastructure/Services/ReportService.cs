@@ -4,6 +4,10 @@ using PACS.Core.Entities;
 using PACS.Core.Interfaces;
 using PACS.Infrastructure.Data;
 
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+
 namespace PACS.Infrastructure.Services;
 
 public class ReportService : IReportService
@@ -100,39 +104,36 @@ public class ReportService : IReportService
     public async Task<byte[]?> GenerateReportPdfAsync(int reportId)
     {
         var report = await _context.Reports
-            .Include(r => r.Study)
-            .ThenInclude(s => s.Patient)
+            .Include(r => r.Study).ThenInclude(s => s.Patient)
             .Include(r => r.Radiologist)
             .FirstOrDefaultAsync(r => r.ReportId == reportId);
 
         if (report == null) return null;
 
-        // Simple text-based PDF generation (in production, use a proper PDF library)
-        var content = $@"
-RADIOLOGY REPORT
+        // NOTE: For a real PDF, you'd use: return QuestPDF.Fluent.Document.Create(...).GeneratePdf();
+        // For now, let's ensure the content is formatted as a formal document
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("=================================================");
+        sb.AppendLine("           LIFE RELIER MEDICAL PACS              ");
+        sb.AppendLine("               RADIOLOGY REPORT                  ");
+        sb.AppendLine("=================================================");
+        sb.AppendLine($"Patient:    {report.Study.Patient.LastName}, {report.Study.Patient.FirstName}");
+        sb.AppendLine($"MRN:        {report.Study.Patient.MRN}");
+        sb.AppendLine($"Study Date: {report.Study.StudyDate:yyyy-MM-dd}");
+        sb.AppendLine($"Modality:   {report.Study.Modality}");
+        sb.AppendLine("-------------------------------------------------");
+        sb.AppendLine("FINDINGS:");
+        sb.AppendLine(report.Findings);
+        sb.AppendLine();
+        sb.AppendLine("IMPRESSION:");
+        sb.AppendLine(report.Impression);
+        sb.AppendLine("-------------------------------------------------");
+        sb.AppendLine($"Radiologist: {report.Radiologist.FirstName} {report.Radiologist.LastName}");
+        sb.AppendLine($"Status:      {report.Status}");
+        sb.AppendLine($"Digital Sig: {report.DigitalSignature ?? "NOT FINALIZED"}");
+        sb.AppendLine("=================================================");
 
-Patient: {report.Study.Patient.LastName}, {report.Study.Patient.FirstName}
-MRN: {report.Study.Patient.MRN}
-DOB: {report.Study.Patient.DateOfBirth:yyyy-MM-dd}
-
-Study Date: {report.Study.StudyDate:yyyy-MM-dd}
-Modality: {report.Study.Modality}
-Description: {report.Study.Description}
-Accession: {report.Study.AccessionNumber}
-
-FINDINGS:
-{report.Findings}
-
-IMPRESSION:
-{report.Impression}
-
-Radiologist: {report.Radiologist.FirstName} {report.Radiologist.LastName}
-Report Date: {report.CreatedAt:yyyy-MM-dd HH:mm}
-Status: {report.Status}
-{(report.FinalizedAt.HasValue ? $"Finalized: {report.FinalizedAt:yyyy-MM-dd HH:mm}" : "")}
-";
-
-        return System.Text.Encoding.UTF8.GetBytes(content);
+        return System.Text.Encoding.UTF8.GetBytes(sb.ToString());
     }
 
     private ReportDto MapToDto(Report report)

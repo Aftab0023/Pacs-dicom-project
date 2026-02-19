@@ -69,23 +69,17 @@ public class OrthancService : IOrthancService
                 return;
             }
 
-            var patientMetadata = await GetPatientMetadataAsync(studyMetadata.ParentPatient);
-            if (patientMetadata == null)
-            {
-                _logger.LogWarning($"Could not retrieve patient metadata for: {studyMetadata.ParentPatient}");
-                return;
-            }
-
-            // Extract DICOM tags
+            // Extract DICOM tags from study
             var studyInstanceUID = studyMetadata.MainDicomTags.GetValueOrDefault("StudyInstanceUID", "");
             var studyDate = studyMetadata.MainDicomTags.GetValueOrDefault("StudyDate", "");
             var studyDescription = studyMetadata.MainDicomTags.GetValueOrDefault("StudyDescription", "");
             var accessionNumber = studyMetadata.MainDicomTags.GetValueOrDefault("AccessionNumber", "");
 
-            var patientName = patientMetadata.MainDicomTags.GetValueOrDefault("PatientName", "");
-            var patientId = patientMetadata.MainDicomTags.GetValueOrDefault("PatientID", "");
-            var patientBirthDate = patientMetadata.MainDicomTags.GetValueOrDefault("PatientBirthDate", "");
-            var patientSex = patientMetadata.MainDicomTags.GetValueOrDefault("PatientSex", "");
+            // Extract patient tags from study (Orthanc includes them)
+            var patientName = studyMetadata.PatientMainDicomTags.GetValueOrDefault("PatientName", "");
+            var patientId = studyMetadata.PatientMainDicomTags.GetValueOrDefault("PatientID", "");
+            var patientBirthDate = studyMetadata.PatientMainDicomTags.GetValueOrDefault("PatientBirthDate", "");
+            var patientSex = studyMetadata.PatientMainDicomTags.GetValueOrDefault("PatientSex", "");
 
             _logger.LogInformation($"Processing study UID: {studyInstanceUID}, Patient: {patientName}");
 

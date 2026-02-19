@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PACS.Core.DTOs;
 using PACS.Core.Interfaces;
@@ -18,6 +19,7 @@ public class OrthancWebhookController : ControllerBase
     }
 
     [HttpPost("webhook")]
+    [AllowAnonymous]  // Allow Orthanc to call this without authentication
     public async Task<ActionResult> HandleWebhook([FromBody] OrthancWebhookPayload payload)
     {
         _logger.LogInformation($"Received Orthanc webhook: {payload.ChangeType} - {payload.ResourceType} - {payload.ID}");
@@ -40,6 +42,7 @@ public class OrthancWebhookController : ControllerBase
     }
 
     [HttpGet("dicomweb/{studyInstanceUID}")]
+    [Authorize]
     public async Task<ActionResult> GetDicomWebUrl(string studyInstanceUID)
     {
         var url = await _orthancService.GetDicomWebUrlAsync(studyInstanceUID);

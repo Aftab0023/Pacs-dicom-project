@@ -97,6 +97,16 @@ public class WorklistController : ControllerBase
 
         return Ok(new { message = "Priority updated successfully" });
     }
+
+    [HttpGet("stats")]
+    public async Task<ActionResult> GetStats()
+    {
+        // We assume the service will handle the logic to count specific study statuses
+        var stats = await _studyService.GetWorklistStatsAsync();
+        
+        return Ok(stats);
+    }
+
 }
 
 public record AssignStudyRequest(int RadiologistId);

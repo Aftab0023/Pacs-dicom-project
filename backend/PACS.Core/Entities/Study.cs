@@ -10,13 +10,16 @@ public class Study
     public string Description { get; set; } = string.Empty;
     public string AccessionNumber { get; set; } = string.Empty;
     public string OrthancStudyId { get; set; } = string.Empty;
-    public string Status { get; set; } = "Pending"; // Pending, InProgress, Reported, Finalized
-    public int? AssignedRadiologistId { get; set; }
+
+    // CHECK HERE: Ensure these two lines only exist once!
+    public string Status { get; set; } = "Pending"; 
     public bool IsPriority { get; set; }
+
+    public int? AssignedRadiologistId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
-    // Navigation
+    // Navigation properties
     public Patient Patient { get; set; } = null!;
     public User? AssignedRadiologist { get; set; }
     public ICollection<Series> Series { get; set; } = new List<Series>();

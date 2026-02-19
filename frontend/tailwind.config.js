@@ -7,11 +7,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        medical: {
-          dark: '#0a0e27',
-          darker: '#050814',
-          blue: '#1e40af',
-          accent: '#3b82f6'
+        'medical': {
+          darker: '#0a0f1c',
+          dark: '#141b2b',
+          accent: '#2b6ef0',
+        }
+      },
+      animation: {
+        'shake': 'shake 0.5s ease-in-out',
+      },
+      keyframes: {
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-2px)' },
+          '20%, 40%, 60%, 80%': { transform: 'translateX(2px)' },
         }
       }
     },

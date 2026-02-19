@@ -4,6 +4,7 @@ namespace PACS.Core.Interfaces;
 
 public interface IStudyService
 {
+    Task<WorklistStatsDto> GetWorklistStatsAsync();
     Task<(List<StudyDto> Studies, int TotalCount)> GetWorklistAsync(WorklistFilterDto filter);
     Task<StudyDetailDto?> GetStudyDetailAsync(int studyId);
     Task<StudyDetailDto?> GetStudyByUIDAsync(string studyInstanceUID);

@@ -14,6 +14,22 @@ public class StudyService : IStudyService
         _context = context;
     }
 
+    // --- ADD THIS METHOD TO FIX THE ZEROS ON DASHBOARD ---
+    public async Task<WorklistStatsDto> GetWorklistStatsAsync()
+    {
+        return new WorklistStatsDto
+        {
+            // Counts studies waiting to be reported
+            PendingCount = await _context.Studies.CountAsync(s => s.Status == "Pending"),
+            
+            // Counts studies marked with the priority red triangle
+            PriorityCount = await _context.Studies.CountAsync(s => s.IsPriority),
+            
+            // Counts studies that have a finalized report
+            ReportedCount = await _context.Studies.CountAsync(s => s.Status == "Reported" || s.Status == "Final")
+        };
+    }
+
     public async Task<(List<StudyDto> Studies, int TotalCount)> GetWorklistAsync(WorklistFilterDto filter)
     {
         var query = _context.Studies
@@ -23,7 +39,7 @@ public class StudyService : IStudyService
             .ThenInclude(sr => sr.Instances)
             .AsQueryable();
 
-        // Apply filters
+        // ... Keep your existing filter logic exactly as it is ...
         if (!string.IsNullOrEmpty(filter.SearchTerm))
         {
             query = query.Where(s =>
@@ -78,7 +94,7 @@ public class StudyService : IStudyService
                 s.IsPriority,
                 s.AssignedRadiologist != null ? $"{s.AssignedRadiologist.FirstName} {s.AssignedRadiologist.LastName}" : null,
                 s.Series.Count,
-                0  // Instance count removed to avoid SQL aggregate error
+                0  
             ))
             .ToListAsync();
 
@@ -121,7 +137,6 @@ public class StudyService : IStudyService
     {
         var study = await _context.Studies.FindAsync(studyId);
         if (study == null) return false;
-
         study.AssignedRadiologistId = radiologistId;
         study.Status = "InProgress";
         study.UpdatedAt = DateTime.UtcNow;

@@ -101,9 +101,9 @@ public class ReportController : ControllerBase
     public async Task<ActionResult> DownloadPdf(int reportId)
     {
         var pdf = await _reportService.GenerateReportPdfAsync(reportId);
-        if (pdf == null)
-            return NotFound();
-
-        return File(pdf, "application/pdf", $"report_{reportId}.pdf");
+        if (pdf == null) return NotFound();
+        return File(pdf, "application/pdf", $"report_{reportId}.txt");
     }
+
+    
 }

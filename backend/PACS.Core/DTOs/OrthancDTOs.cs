@@ -11,8 +11,9 @@ public record OrthancWebhookPayload(
 public record OrthancStudyMetadata(
     string ID,
     bool IsStable,
-    DateTime LastUpdate,
+    string LastUpdate,
     Dictionary<string, string> MainDicomTags,
+    Dictionary<string, string> PatientMainDicomTags,
     string ParentPatient,
     List<string> Series,
     string Type

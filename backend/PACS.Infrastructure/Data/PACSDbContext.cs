@@ -37,15 +37,18 @@ public class PACSDbContext : DbContext
         {
             entity.HasKey(e => e.StudyId);
             entity.HasIndex(e => e.StudyInstanceUID).IsUnique();
-            entity.HasIndex(e => e.StudyDate);
-            entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.AccessionNumber);
             entity.Property(e => e.StudyInstanceUID).HasMaxLength(200).IsRequired();
-            entity.Property(e => e.Modality).HasMaxLength(50);
-            entity.Property(e => e.Description).HasMaxLength(500);
-            entity.Property(e => e.AccessionNumber).HasMaxLength(50);
-            entity.Property(e => e.OrthancStudyId).HasMaxLength(100);
-            entity.Property(e => e.Status).HasMaxLength(50);
+            
+            // New & Updated Fields
+            entity.Property(e => e.Status)
+                  .HasMaxLength(50)
+                  .HasDefaultValue("Pending"); // Matches frontend default
+            
+            entity.Property(e => e.IsPriority)
+                  .HasDefaultValue(false); // Matches frontend logic
+
+            entity.Property(e => e.CreatedAt)
+                  .HasDefaultValueSql("GETUTCDATE()");
 
             entity.HasOne(e => e.Patient)
                 .WithMany(p => p.Studies)
