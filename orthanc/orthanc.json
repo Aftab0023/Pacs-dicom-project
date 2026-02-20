@@ -23,7 +23,17 @@
     "Host": "0.0.0.0",
     "Port": 8042
   },
-  "DicomModalities": {},
+  "Worklists": {
+    "Enable": true,
+    "Database": "/var/lib/orthanc/worklists"
+  },
+  "DicomModalities": {
+    
+    "CT_ROOM1": [ "CT_ROOM1", "192.168.1.60", 104 ],
+    "CT_ROOM2": [ "CT_ROOM2", "192.168.1.61", 104 ],
+    "MRI_MAIN": [ "MRI_MAIN", "192.168.1.62", 104 ],
+    "XRAY_DR":  [ "XRAY_DR",  "192.168.1.63", 104 ]
+  },
   "OrthancPeers": {},
   "HttpTimeout": 60,
   "HttpVerbose": false,

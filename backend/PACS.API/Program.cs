@@ -78,6 +78,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IStudyService, StudyService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IWorklistService, WorklistService>();
 builder.Services.AddHttpClient<IOrthancService, OrthancService>();
 
 var app = builder.Build();

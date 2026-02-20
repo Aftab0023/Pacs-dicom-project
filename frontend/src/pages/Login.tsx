@@ -113,12 +113,12 @@ export default function Login() {
              <div className="bg-white/5 p-2 rounded-lg border border-white/5">
                 <p className="text-blue-400 font-bold mb-1">ADMIN</p>
                 <p className="text-slate-300">admin@pacs.local</p>
-                <p className="text-slate-500 italic">Admin123!</p>
+                <p className="text-slate-500 italic">admin123</p>
              </div>
              <div className="bg-white/5 p-2 rounded-lg border border-white/5">
                 <p className="text-blue-400 font-bold mb-1">STAFF</p>
                 <p className="text-slate-300">radiologist@pacs.local</p>
-                <p className="text-slate-500 italic">Radio123!</p>
+                <p className="text-slate-500 italic">admin123</p>
              </div>
           </div>
         </div>

@@ -16,6 +16,8 @@ public class PACSDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<ReportTemplate> ReportTemplates => Set<ReportTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -140,6 +142,38 @@ public class PACSDbContext : DbContext
                 .WithMany(u => u.AuditLogs)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Order
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.HasKey(e => e.OrderId);
+            entity.HasIndex(e => e.AccessionNumber).IsUnique();
+            entity.HasIndex(e => e.Status);
+            entity.Property(e => e.AccessionNumber).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.OrderingPhysician).HasMaxLength(200);
+            entity.Property(e => e.ReferringPhysician).HasMaxLength(200);
+            entity.Property(e => e.Modality).HasMaxLength(50);
+            entity.Property(e => e.StudyDescription).HasMaxLength(500);
+            entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("Scheduled");
+            entity.Property(e => e.Priority).HasMaxLength(50).HasDefaultValue("Routine");
+            entity.Property(e => e.HL7MessageId).HasMaxLength(100);
+
+            entity.HasOne(e => e.Patient)
+                .WithMany()
+                .HasForeignKey(e => e.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ReportTemplate
+        modelBuilder.Entity<ReportTemplate>(entity =>
+        {
+            entity.HasKey(e => e.TemplateId);
+            entity.HasIndex(e => e.Specialty);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Specialty).HasMaxLength(100);
+            entity.Property(e => e.Modality).HasMaxLength(50);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
         });
 
         // Seed data

@@ -6,11 +6,13 @@ local API_URL = "http://pacs-api:8080/api/orthanc/webhook"
 function OnStableStudy(studyId, tags, metadata)
     print("New stable study detected: " .. studyId)
     
-    -- Create webhook payload
+    -- Create webhook payload matching the C# DTO structure
     local payload = {
         ChangeType = "StableStudy",
         ResourceType = "Study",
-        ID = studyId
+        ID = studyId,
+        Path = "/studies/" .. studyId,
+        Seq = 0
     }
     
     -- Convert payload to JSON
