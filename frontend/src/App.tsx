@@ -6,6 +6,9 @@ import Worklist from './pages/Worklist'
 import StudyViewer from './pages/StudyViewer'
 import Reporting from './pages/Reporting'
 import OHIFViewer from './pages/OHIFViewer'
+import SharedViewer from './pages/SharedViewer'
+import AdminSettings from './pages/AdminSettings'
+import ReportPreview from './pages/ReportPreview'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -18,11 +21,14 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/viewer/shared/:token" element={<SharedViewer />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/worklist" element={<ProtectedRoute><Worklist /></ProtectedRoute>} />
           <Route path="/viewer/:studyId" element={<ProtectedRoute><StudyViewer /></ProtectedRoute>} />
           <Route path="/viewer" element={<ProtectedRoute><OHIFViewer /></ProtectedRoute>} />
           <Route path="/report/:studyId" element={<ProtectedRoute><Reporting /></ProtectedRoute>} />
+          <Route path="/report/preview/:reportId" element={<ProtectedRoute><ReportPreview /></ProtectedRoute>} />
+          <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

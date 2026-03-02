@@ -18,6 +18,22 @@ public class PACSDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<ReportTemplate> ReportTemplates => Set<ReportTemplate>();
+    
+    // Enterprise entities
+    public DbSet<WorklistEntry> WorklistEntries => Set<WorklistEntry>();
+    public DbSet<RoutingRule> RoutingRules => Set<RoutingRule>();
+    public DbSet<StudyAssignment> StudyAssignments => Set<StudyAssignment>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<UserDepartment> UserDepartments => Set<UserDepartment>();
+    public DbSet<StudyAccessControl> StudyAccessControls => Set<StudyAccessControl>();
+    public DbSet<AuditLogEnhanced> AuditLogsEnhanced => Set<AuditLogEnhanced>();
+    public DbSet<PatientShare> PatientShares => Set<PatientShare>();
+    public DbSet<PatientShareAccess> PatientShareAccesses => Set<PatientShareAccess>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -176,8 +192,227 @@ public class PACSDbContext : DbContext
             entity.Property(e => e.IsActive).HasDefaultValue(true);
         });
 
+        // Enterprise Entities Configuration
+        ConfigureEnterpriseEntities(modelBuilder);
+
         // Seed data
         SeedData(modelBuilder);
+    }
+
+    private void ConfigureEnterpriseEntities(ModelBuilder modelBuilder)
+    {
+        // WorklistEntry
+        modelBuilder.Entity<WorklistEntry>(entity =>
+        {
+            entity.HasKey(e => e.WorklistID);
+            entity.HasIndex(e => e.AccessionNumber).IsUnique();
+            entity.HasIndex(e => e.ScheduledProcedureStepStartDate);
+            entity.HasIndex(e => e.Modality);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.PatientID);
+            
+            entity.HasOne(e => e.Creator)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // RoutingRule
+        modelBuilder.Entity<RoutingRule>(entity =>
+        {
+            entity.HasKey(e => e.RuleID);
+            entity.HasIndex(e => new { e.Priority, e.IsActive });
+            
+            entity.HasOne(e => e.Creator)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // StudyAssignment
+        modelBuilder.Entity<StudyAssignment>(entity =>
+        {
+            entity.HasKey(e => e.AssignmentID);
+            entity.HasIndex(e => e.StudyInstanceUID);
+            entity.HasIndex(e => new { e.AssignedToUserID, e.Status });
+            entity.HasIndex(e => new { e.Priority, e.Status });
+            
+            entity.HasOne(e => e.AssignedToUser)
+                .WithMany()
+                .HasForeignKey(e => e.AssignedToUserID)
+                .OnDelete(DeleteBehavior.Restrict);
+                
+            entity.HasOne(e => e.AssignedByRule)
+                .WithMany(r => r.StudyAssignments)
+                .HasForeignKey(e => e.AssignedByRuleID)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Permission
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(e => e.PermissionID);
+            entity.HasIndex(e => e.PermissionName).IsUnique();
+            entity.Property(e => e.PermissionName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Category).HasMaxLength(50).IsRequired();
+        });
+
+        // Role
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasKey(e => e.RoleID);
+            entity.HasIndex(e => e.RoleName).IsUnique();
+            entity.Property(e => e.RoleName).HasMaxLength(50).IsRequired();
+        });
+
+        // RolePermission
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(e => new { e.RoleID, e.PermissionID });
+            
+            entity.HasOne(e => e.Role)
+                .WithMany(r => r.RolePermissions)
+                .HasForeignKey(e => e.RoleID)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne(e => e.Permission)
+                .WithMany(p => p.RolePermissions)
+                .HasForeignKey(e => e.PermissionID)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // UserRole
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.HasKey(e => new { e.UserID, e.RoleID });
+            
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserID)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne(e => e.Role)
+                .WithMany(r => r.UserRoles)
+                .HasForeignKey(e => e.RoleID)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Department
+        modelBuilder.Entity<Department>(entity =>
+        {
+            entity.HasKey(e => e.DepartmentID);
+            entity.HasIndex(e => e.DepartmentName).IsUnique();
+            entity.Property(e => e.DepartmentName).HasMaxLength(100).IsRequired();
+        });
+
+        // UserDepartment
+        modelBuilder.Entity<UserDepartment>(entity =>
+        {
+            entity.HasKey(e => new { e.UserID, e.DepartmentID });
+            
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserID)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne(e => e.Department)
+                .WithMany(d => d.UserDepartments)
+                .HasForeignKey(e => e.DepartmentID)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // StudyAccessControl
+        modelBuilder.Entity<StudyAccessControl>(entity =>
+        {
+            entity.HasKey(e => e.AccessID);
+            entity.HasIndex(e => e.StudyInstanceUID);
+            entity.HasIndex(e => new { e.UserID, e.AccessType });
+            entity.HasIndex(e => new { e.DepartmentID, e.AccessType });
+            
+            entity.HasOne(e => e.Department)
+                .WithMany(d => d.StudyAccessControls)
+                .HasForeignKey(e => e.DepartmentID)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserID)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne(e => e.GrantedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.GrantedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // AuditLogEnhanced
+        modelBuilder.Entity<AuditLogEnhanced>(entity =>
+        {
+            entity.HasKey(e => e.AuditID);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.UserID, e.Timestamp });
+            entity.HasIndex(e => new { e.EventType, e.Timestamp });
+            entity.HasIndex(e => new { e.ResourceID, e.Timestamp });
+            entity.HasIndex(e => new { e.EventCategory, e.Timestamp });
+            
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserID)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // PatientShare
+        modelBuilder.Entity<PatientShare>(entity =>
+        {
+            entity.HasKey(e => e.ShareID);
+            entity.HasIndex(e => e.ShareToken).IsUnique();
+            entity.HasIndex(e => e.StudyInstanceUID);
+            entity.HasIndex(e => new { e.IsActive, e.ExpiresAt });
+            entity.Property(e => e.ShareToken).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.StudyInstanceUID).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.PatientEmail).HasMaxLength(200);
+            
+            entity.HasOne(e => e.Patient)
+                .WithMany()
+                .HasForeignKey(e => e.PatientID)
+                .OnDelete(DeleteBehavior.Restrict);
+                
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // PatientShareAccess
+        modelBuilder.Entity<PatientShareAccess>(entity =>
+        {
+            entity.HasKey(e => e.AccessID);
+            entity.HasIndex(e => new { e.ShareID, e.AccessedAt });
+            entity.Property(e => e.IPAddress).HasMaxLength(50);
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+            
+            entity.HasOne(e => e.Share)
+                .WithMany(s => s.AccessLogs)
+                .HasForeignKey(e => e.ShareID)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // SystemSetting
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.HasKey(e => e.SettingID);
+            entity.HasIndex(e => e.SettingKey).IsUnique();
+            entity.HasIndex(e => new { e.Category, e.IsEditable });
+            entity.Property(e => e.SettingKey).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.SettingType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Category).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
+            
+            entity.HasOne(e => e.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.UpdatedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
     }
 
     private void SeedData(ModelBuilder modelBuilder)

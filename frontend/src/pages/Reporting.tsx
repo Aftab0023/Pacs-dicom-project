@@ -10,8 +10,6 @@ import {
 } from 'react-icons/hi'
 import { MdOutlineDescription, MdHistoryEdu } from 'react-icons/md'
 
-import { HiOutlinePrinter } from 'react-icons/hi';
-
 
 export default function Reporting() {
   const { studyId } = useParams<{ studyId: string }>()
@@ -116,7 +114,7 @@ export default function Reporting() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Report-${reportId}.txt`);
+      link.setAttribute('download', `Report-${reportId}.pdf`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -156,14 +154,6 @@ export default function Reporting() {
               className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/20 transition-all"
             >
               <HiCheckCircle size={20} /> Finalize
-            </button>
-
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold border border-slate-700 transition-all"
-            >
-              <HiOutlinePrinter size={20} />
-              Print PDF
             </button>
           </div>
         </div>
@@ -214,7 +204,13 @@ export default function Reporting() {
                       <p className="text-[10px] text-slate-500 mb-2 flex items-center gap-1">
                         <HiOutlineClock /> {new Date(report.createdAt).toLocaleString()}
                       </p>
-                      <p className="text-xs text-slate-400 line-clamp-2 italic">"{report.impression}"</p>
+                      <p className="text-xs text-slate-400 line-clamp-2 italic mb-3">"{report.impression}"</p>
+                      <button
+                        onClick={() => navigate(`/report/preview/${report.reportId}`)}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all"
+                      >
+                        <HiOutlineEye size={16} /> View Report
+                      </button>
                     </div>
                   ))}
                 </div>

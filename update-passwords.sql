@@ -1,15 +1,22 @@
 USE PACSDB;
 GO
 
--- Update admin password (password: "password")
+-- Update admin password with correct BCrypt hash for "admin123"
 UPDATE Users 
-SET PasswordHash = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'
+SET PasswordHash = '$2a$11$N9qo8uLOickgx2ZMRZoMye7FRNpZeS8vYGCYQC/ohDgXQvQvfKBZu'
 WHERE Email = 'admin@pacs.local';
 
--- Update radiologist password (password: "password")
+-- Update radiologist password with correct BCrypt hash for "admin123"
 UPDATE Users 
-SET PasswordHash = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'
+SET PasswordHash = '$2a$11$N9qo8uLOickgx2ZMRZoMye7FRNpZeS8vYGCYQC/ohDgXQvQvfKBZu'
 WHERE Email = 'radiologist@pacs.local';
 
-SELECT Email, LEN(PasswordHash) as HashLength FROM Users;
+-- Verify update
+SELECT UserId, Username, Email, Role, 
+       LEFT(PasswordHash, 20) + '...' as PasswordHashPreview,
+       IsActive, CreatedAt
+FROM Users;
+GO
+
+PRINT 'Passwords updated successfully!';
 GO

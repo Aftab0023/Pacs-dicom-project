@@ -2,6 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { worklistApi } from '../services/api'
 import Layout from '../components/Layout'
+import ViewerShareDialog from '../components/ViewerShareDialog'
+import { useState } from 'react'
 import { 
   HiArrowLeft, 
   HiOutlineUser, 
@@ -9,7 +11,8 @@ import {
   HiOutlineIdentification,
   HiOutlineCube,
   HiExternalLink,
-  HiOutlineDocumentText
+  HiOutlineDocumentText,
+  HiOutlineShare
 } from 'react-icons/hi'
 
 import { MdOutlineScreenSearchDesktop } from 'react-icons/md'
@@ -17,6 +20,7 @@ import { MdOutlineScreenSearchDesktop } from 'react-icons/md'
 export default function StudyViewer() {
   const { studyId } = useParams<{ studyId: string }>()
   const navigate = useNavigate()
+  const [showShareDialog, setShowShareDialog] = useState(false)
   
   const ORTHANC_URL = import.meta.env.VITE_ORTHANC_URL || 'http://localhost:8042'
 
@@ -69,13 +73,23 @@ export default function StudyViewer() {
             </div>
           </div>
           
-          <button
-            onClick={() => navigate(`/report/${studyId}`)}
-            className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-95 w-full sm:w-auto justify-center"
-          >
-            <HiOutlineDocumentText size={20} />
-            Create Report
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowShareDialog(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold shadow-lg shadow-purple-900/20 transition-all active:scale-95"
+            >
+              <HiOutlineShare size={20} />
+              Share with Patient
+            </button>
+            
+            <button
+              onClick={() => navigate(`/report/${studyId}`)}
+              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-95 w-full sm:w-auto justify-center"
+            >
+              <HiOutlineDocumentText size={20} />
+              Create Report
+            </button>
+          </div>
         </div>
 
         {/* Patient Info Bar (Glassmorphism Effect) */}
@@ -147,6 +161,15 @@ export default function StudyViewer() {
           </div>
         </div>
       </div>
+
+      {/* Share Dialog */}
+      {showShareDialog && study && (
+        <ViewerShareDialog
+          studyInstanceUID={study.studyInstanceUID}
+          patientEmail={study.patient.email}
+          onClose={() => setShowShareDialog(false)}
+        />
+      )}
     </Layout>
   )
 }

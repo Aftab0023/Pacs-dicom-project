@@ -58,6 +58,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"] ?? "PACSClient",
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
+        
+        // Add CORS headers to 401 responses
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = context =>
+            {
+                context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -79,6 +89,8 @@ builder.Services.AddScoped<IStudyService, StudyService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IWorklistService, WorklistService>();
+builder.Services.AddScoped<IPatientShareService, PatientShareService>();
+builder.Services.AddScoped<ISystemSettingsService, SystemSettingsService>();
 builder.Services.AddHttpClient<IOrthancService, OrthancService>();
 
 var app = builder.Build();
@@ -86,13 +98,16 @@ var app = builder.Build();
 // Configure pipeline
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
 }
+app.UseSwagger();
+app.UseSwaggerUI();
 
+// CORS must be before Authentication/Authorization
 app.UseCors("AllowAll");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 // Auto-migrate database

@@ -25,128 +25,172 @@ public class WorklistService : IWorklistService
         _worklistPath = configuration["Worklist:Path"] ?? "/var/lib/orthanc/worklists";
     }
 
-    public async Task<List<OrderDto>> GetScheduledOrdersAsync()
+    public async Task<WorklistEntryResponse> CreateWorklistEntryAsync(CreateWorklistEntryRequest request, int createdBy)
     {
-        var orders = await _context.Set<Order>()
-            .Include(o => o.Patient)
-            .Where(o => o.Status == "Scheduled")
-            .OrderBy(o => o.ScheduledDateTime)
-            .ToListAsync();
-
-        return orders.Select(o => new OrderDto(
-            o.OrderId,
-            o.AccessionNumber,
-            $"{o.Patient.LastName}, {o.Patient.FirstName}",
-            o.Patient.MRN,
-            o.OrderingPhysician,
-            o.Modality,
-            o.StudyDescription,
-            o.ScheduledDateTime,
-            o.Status,
-            o.Priority
-        )).ToList();
-    }
-
-    public async Task<OrderDto?> GetOrderByAccessionNumberAsync(string accessionNumber)
-    {
-        var order = await _context.Set<Order>()
-            .Include(o => o.Patient)
-            .FirstOrDefaultAsync(o => o.AccessionNumber == accessionNumber);
-
-        if (order == null) return null;
-
-        return new OrderDto(
-            order.OrderId,
-            order.AccessionNumber,
-            $"{order.Patient.LastName}, {order.Patient.FirstName}",
-            order.Patient.MRN,
-            order.OrderingPhysician,
-            order.Modality,
-            order.StudyDescription,
-            order.ScheduledDateTime,
-            order.Status,
-            order.Priority
-        );
-    }
-
-    public async Task<int> CreateOrderAsync(CreateOrderRequest request)
-    {
-        var order = new Order
+        var entry = new WorklistEntry
         {
             AccessionNumber = request.AccessionNumber,
-            PatientId = request.PatientId,
-            OrderingPhysician = request.OrderingPhysician,
-            ReferringPhysician = request.ReferringPhysician,
+            PatientID = request.PatientID,
+            PatientName = request.PatientName,
+            PatientBirthDate = request.PatientBirthDate,
+            PatientSex = request.PatientSex,
+            ScheduledProcedureStepStartDate = request.ScheduledProcedureStepStartDate,
+            ScheduledProcedureStepStartTime = request.ScheduledProcedureStepStartTime,
             Modality = request.Modality,
-            StudyDescription = request.StudyDescription,
-            ScheduledDateTime = request.ScheduledDateTime,
-            Priority = request.Priority,
-            Status = "Scheduled",
-            CreatedAt = DateTime.UtcNow
+            ScheduledStationAETitle = request.ScheduledStationAETitle,
+            ScheduledProcedureStepDescription = request.ScheduledProcedureStepDescription,
+            RequestedProcedureID = request.RequestedProcedureID,
+            ReferringPhysicianName = request.ReferringPhysicianName,
+            Status = "SCHEDULED",
+            CreatedBy = createdBy,
+            CreatedDate = DateTime.UtcNow
         };
 
-        _context.Set<Order>().Add(order);
+        _context.WorklistEntries.Add(entry);
         await _context.SaveChangesAsync();
 
-        // Generate worklist file for this order
-        await GenerateWorklistFileForOrderAsync(order.OrderId);
-
-        return order.OrderId;
+        return MapToResponse(entry);
     }
 
-    public async Task<bool> UpdateOrderStatusAsync(int orderId, string status)
+    public async Task<WorklistEntryResponse?> GetWorklistEntryAsync(int worklistId)
     {
-        var order = await _context.Set<Order>().FindAsync(orderId);
-        if (order == null) return false;
+        var entry = await _context.WorklistEntries.FindAsync(worklistId);
+        return entry != null ? MapToResponse(entry) : null;
+    }
 
-        order.Status = status;
-        order.UpdatedAt = DateTime.UtcNow;
+    public async Task<WorklistEntryResponse?> GetWorklistEntryByAccessionAsync(string accessionNumber)
+    {
+        var entry = await _context.WorklistEntries
+            .FirstOrDefaultAsync(w => w.AccessionNumber == accessionNumber);
+        return entry != null ? MapToResponse(entry) : null;
+    }
+
+    public async Task<List<WorklistEntryResponse>> QueryWorklistEntriesAsync(WorklistQueryRequest request)
+    {
+        var query = _context.WorklistEntries.AsQueryable();
+
+        if (!string.IsNullOrEmpty(request.Modality))
+            query = query.Where(w => w.Modality == request.Modality);
+
+        if (!string.IsNullOrEmpty(request.Status))
+            query = query.Where(w => w.Status == request.Status);
+
+        if (request.StartDate.HasValue)
+            query = query.Where(w => w.ScheduledProcedureStepStartDate >= request.StartDate.Value);
+
+        if (request.EndDate.HasValue)
+            query = query.Where(w => w.ScheduledProcedureStepStartDate <= request.EndDate.Value);
+
+        var entries = await query.OrderBy(w => w.ScheduledProcedureStepStartDate).ToListAsync();
+        return entries.Select(MapToResponse).ToList();
+    }
+
+    public async Task<WorklistEntryResponse?> UpdateWorklistEntryAsync(int worklistId, UpdateWorklistEntryRequest request)
+    {
+        var entry = await _context.WorklistEntries.FindAsync(worklistId);
+        if (entry == null) return null;
+
+        entry.ScheduledProcedureStepStartDate = request.ScheduledProcedureStepStartDate ?? entry.ScheduledProcedureStepStartDate;
+        entry.ScheduledProcedureStepStartTime = request.ScheduledProcedureStepStartTime ?? entry.ScheduledProcedureStepStartTime;
+        entry.Modality = request.Modality ?? entry.Modality;
+        entry.ScheduledStationAETitle = request.ScheduledStationAETitle ?? entry.ScheduledStationAETitle;
+        entry.ScheduledProcedureStepDescription = request.ScheduledProcedureStepDescription ?? entry.ScheduledProcedureStepDescription;
+        entry.ReferringPhysicianName = request.ReferringPhysicianName ?? entry.ReferringPhysicianName;
+
         await _context.SaveChangesAsync();
+        return MapToResponse(entry);
+    }
 
-        // Regenerate worklist files
-        await GenerateWorklistFilesAsync();
+    public async Task<WorklistEntryResponse?> UpdateWorklistStatusAsync(int worklistId, string status)
+    {
+        var entry = await _context.WorklistEntries.FindAsync(worklistId);
+        if (entry == null) return null;
 
+        entry.Status = status;
+        if (status == "COMPLETED")
+            entry.CompletedDate = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return MapToResponse(entry);
+    }
+
+    public async Task<bool> DeleteWorklistEntryAsync(int worklistId)
+    {
+        var entry = await _context.WorklistEntries.FindAsync(worklistId);
+        if (entry == null) return false;
+
+        _context.WorklistEntries.Remove(entry);
+        await _context.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<bool> LinkStudyToWorklistAsync(string accessionNumber, string studyInstanceUID)
+    {
+        var entry = await _context.WorklistEntries
+            .FirstOrDefaultAsync(w => w.AccessionNumber == accessionNumber);
+        
+        if (entry == null) return false;
+
+        entry.StudyInstanceUID = studyInstanceUID;
+        entry.Status = "IN_PROGRESS";
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    private WorklistEntryResponse MapToResponse(WorklistEntry entry)
+    {
+        return new WorklistEntryResponse
+        {
+            WorklistID = entry.WorklistID,
+            AccessionNumber = entry.AccessionNumber,
+            PatientID = entry.PatientID,
+            PatientName = entry.PatientName,
+            PatientBirthDate = entry.PatientBirthDate,
+            PatientSex = entry.PatientSex,
+            ScheduledProcedureStepStartDate = entry.ScheduledProcedureStepStartDate,
+            ScheduledProcedureStepStartTime = entry.ScheduledProcedureStepStartTime,
+            Modality = entry.Modality,
+            ScheduledStationAETitle = entry.ScheduledStationAETitle,
+            ScheduledProcedureStepDescription = entry.ScheduledProcedureStepDescription,
+            StudyInstanceUID = entry.StudyInstanceUID,
+            RequestedProcedureID = entry.RequestedProcedureID,
+            ReferringPhysicianName = entry.ReferringPhysicianName,
+            Status = entry.Status,
+            CreatedDate = entry.CreatedDate,
+            CompletedDate = entry.CompletedDate
+        };
     }
 
     public async Task GenerateWorklistFilesAsync()
     {
-        var scheduledOrders = await _context.Set<Order>()
-            .Include(o => o.Patient)
-            .Where(o => o.Status == "Scheduled")
+        var scheduledEntries = await _context.WorklistEntries
+            .Where(w => w.Status == "SCHEDULED")
             .ToListAsync();
 
-        _logger.LogInformation($"Generating worklist files for {scheduledOrders.Count} scheduled orders");
+        _logger.LogInformation($"Generating worklist files for {scheduledEntries.Count} scheduled entries");
 
-        foreach (var order in scheduledOrders)
+        foreach (var entry in scheduledEntries)
         {
-            await GenerateWorklistFileForOrderAsync(order.OrderId);
+            await GenerateWorklistFileForEntryAsync(entry.WorklistID);
         }
     }
 
-    public async Task<string> GenerateWorklistFileForOrderAsync(int orderId)
+    private async Task<string> GenerateWorklistFileForEntryAsync(int worklistId)
     {
-        var order = await _context.Set<Order>()
-            .Include(o => o.Patient)
-            .FirstOrDefaultAsync(o => o.OrderId == orderId);
-
-        if (order == null)
+        var entry = await _context.WorklistEntries.FindAsync(worklistId);
+        if (entry == null)
         {
-            _logger.LogWarning($"Order {orderId} not found");
+            _logger.LogWarning($"Worklist entry {worklistId} not found");
             return string.Empty;
         }
 
         try
         {
-            // Generate DICOM worklist file
-            var filename = $"{order.AccessionNumber}.wl";
+            var filename = $"{entry.AccessionNumber}.wl";
             var filepath = Path.Combine(_worklistPath, filename);
-
-            // Ensure directory exists
             Directory.CreateDirectory(_worklistPath);
 
-            // Create DICOM worklist file
-            var dataset = CreateDicomWorklistDataset(order);
+            var dataset = CreateDicomWorklistDataset(entry);
             var dicomFile = new DicomFile(dataset);
             await dicomFile.SaveAsync(filepath);
 
@@ -155,83 +199,46 @@ public class WorklistService : IWorklistService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Error generating worklist file for order {orderId}");
-            // Fallback to text representation
-            return GenerateDicomWorklistContent(order);
+            _logger.LogError(ex, $"Error generating worklist file for entry {worklistId}");
+            return string.Empty;
         }
     }
 
-    private DicomDataset CreateDicomWorklistDataset(Order order)
+    private DicomDataset CreateDicomWorklistDataset(WorklistEntry entry)
     {
         var dataset = new DicomDataset();
 
-        // Patient Information Module
-        dataset.AddOrUpdate(DicomTag.PatientName, $"{order.Patient.LastName}^{order.Patient.FirstName}");
-        dataset.AddOrUpdate(DicomTag.PatientID, order.Patient.MRN);
-        dataset.AddOrUpdate(DicomTag.PatientBirthDate, order.Patient.DateOfBirth.ToString("yyyyMMdd"));
-        dataset.AddOrUpdate(DicomTag.PatientSex, order.Patient.Gender ?? "O");
+        dataset.AddOrUpdate(DicomTag.PatientName, entry.PatientName);
+        dataset.AddOrUpdate(DicomTag.PatientID, entry.PatientID);
+        if (entry.PatientBirthDate.HasValue)
+            dataset.AddOrUpdate(DicomTag.PatientBirthDate, entry.PatientBirthDate.Value.ToString("yyyyMMdd"));
+        if (!string.IsNullOrEmpty(entry.PatientSex))
+            dataset.AddOrUpdate(DicomTag.PatientSex, entry.PatientSex);
 
-        // Scheduled Procedure Step Sequence
         var spsSequence = new DicomSequence(DicomTag.ScheduledProcedureStepSequence);
         var spsItem = new DicomDataset();
 
-        spsItem.AddOrUpdate(DicomTag.Modality, order.Modality);
-        spsItem.AddOrUpdate(DicomTag.ScheduledStationAETitle, "PACS");
-        spsItem.AddOrUpdate(DicomTag.ScheduledProcedureStepStartDate, order.ScheduledDateTime.ToString("yyyyMMdd"));
-        spsItem.AddOrUpdate(DicomTag.ScheduledProcedureStepStartTime, order.ScheduledDateTime.ToString("HHmmss"));
-        spsItem.AddOrUpdate(DicomTag.ScheduledPerformingPhysicianName, order.OrderingPhysician);
-        spsItem.AddOrUpdate(DicomTag.ScheduledProcedureStepDescription, order.StudyDescription);
-        spsItem.AddOrUpdate(DicomTag.ScheduledProcedureStepID, order.AccessionNumber);
+        spsItem.AddOrUpdate(DicomTag.Modality, entry.Modality);
+        spsItem.AddOrUpdate(DicomTag.ScheduledStationAETitle, entry.ScheduledStationAETitle ?? "PACS");
+        spsItem.AddOrUpdate(DicomTag.ScheduledProcedureStepStartDate, entry.ScheduledProcedureStepStartDate.ToString("yyyyMMdd"));
+        if (entry.ScheduledProcedureStepStartTime.HasValue)
+            spsItem.AddOrUpdate(DicomTag.ScheduledProcedureStepStartTime, entry.ScheduledProcedureStepStartTime.Value.ToString("HHmmss"));
+        spsItem.AddOrUpdate(DicomTag.ScheduledProcedureStepDescription, entry.ScheduledProcedureStepDescription ?? "");
+        spsItem.AddOrUpdate(DicomTag.ScheduledProcedureStepID, entry.AccessionNumber);
 
         spsSequence.Items.Add(spsItem);
         dataset.Add(spsSequence);
 
-        // Requested Procedure Module
-        dataset.AddOrUpdate(DicomTag.RequestedProcedureID, order.AccessionNumber);
-        dataset.AddOrUpdate(DicomTag.RequestedProcedureDescription, order.StudyDescription);
-        dataset.AddOrUpdate(DicomTag.RequestedProcedurePriority, order.Priority.ToUpper());
+        dataset.AddOrUpdate(DicomTag.RequestedProcedureID, entry.RequestedProcedureID ?? entry.AccessionNumber);
+        dataset.AddOrUpdate(DicomTag.AccessionNumber, entry.AccessionNumber);
+        if (!string.IsNullOrEmpty(entry.ReferringPhysicianName))
+            dataset.AddOrUpdate(DicomTag.ReferringPhysicianName, entry.ReferringPhysicianName);
 
-        // Imaging Service Request Module
-        dataset.AddOrUpdate(DicomTag.AccessionNumber, order.AccessionNumber);
-        dataset.AddOrUpdate(DicomTag.ReferringPhysicianName, order.ReferringPhysician);
-        dataset.AddOrUpdate(DicomTag.RequestingPhysician, order.OrderingPhysician);
-
-        // Study Instance UID (generate if not exists)
-        dataset.AddOrUpdate(DicomTag.StudyInstanceUID, DicomUID.Generate().UID);
+        if (!string.IsNullOrEmpty(entry.StudyInstanceUID))
+            dataset.AddOrUpdate(DicomTag.StudyInstanceUID, entry.StudyInstanceUID);
+        else
+            dataset.AddOrUpdate(DicomTag.StudyInstanceUID, DicomUID.Generate().UID);
 
         return dataset;
-    }
-
-    private string GenerateDicomWorklistContent(Order order)
-    {
-        // This is a simplified representation
-        // In production, you would use a DICOM library like fo-dicom to create proper DICOM files
-        var sb = new StringBuilder();
-        sb.AppendLine($"# DICOM Modality Worklist Item");
-        sb.AppendLine($"# Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
-        sb.AppendLine();
-        sb.AppendLine($"# Patient Information");
-        sb.AppendLine($"PatientName: {order.Patient.LastName}^{order.Patient.FirstName}");
-        sb.AppendLine($"PatientID: {order.Patient.MRN}");
-        sb.AppendLine($"PatientBirthDate: {order.Patient.DateOfBirth:yyyyMMdd}");
-        sb.AppendLine($"PatientSex: {order.Patient.Gender}");
-        sb.AppendLine();
-        sb.AppendLine($"# Study Information");
-        sb.AppendLine($"AccessionNumber: {order.AccessionNumber}");
-        sb.AppendLine($"StudyDescription: {order.StudyDescription}");
-        sb.AppendLine($"Modality: {order.Modality}");
-        sb.AppendLine();
-        sb.AppendLine($"# Scheduled Procedure Step");
-        sb.AppendLine($"ScheduledStationAETitle: PACS");
-        sb.AppendLine($"ScheduledProcedureStepStartDate: {order.ScheduledDateTime:yyyyMMdd}");
-        sb.AppendLine($"ScheduledProcedureStepStartTime: {order.ScheduledDateTime:HHmmss}");
-        sb.AppendLine($"ScheduledPerformingPhysicianName: {order.OrderingPhysician}");
-        sb.AppendLine($"ScheduledProcedureStepDescription: {order.StudyDescription}");
-        sb.AppendLine();
-        sb.AppendLine($"# Requesting Physician");
-        sb.AppendLine($"ReferringPhysicianName: {order.ReferringPhysician}");
-        sb.AppendLine($"RequestingPhysician: {order.OrderingPhysician}");
-
-        return sb.ToString();
     }
 }

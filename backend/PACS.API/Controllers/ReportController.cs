@@ -102,8 +102,17 @@ public class ReportController : ControllerBase
     {
         var pdf = await _reportService.GenerateReportPdfAsync(reportId);
         if (pdf == null) return NotFound();
-        return File(pdf, "application/pdf", $"report_{reportId}.txt");
+        
+        return File(pdf, "application/pdf", $"Report_{reportId}.pdf");
     }
 
-    
+    [HttpGet("{reportId}/pdf/preview")]
+    public async Task<ActionResult> PreviewPdf(int reportId)
+    {
+        var pdf = await _reportService.GenerateReportPdfAsync(reportId);
+        if (pdf == null) return NotFound();
+        
+        // Return PDF for inline viewing (preview)
+        return File(pdf, "application/pdf");
+    }
 }

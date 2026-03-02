@@ -9,7 +9,24 @@ public record ReportDto(
     string Findings,
     string Impression,
     DateTime CreatedAt,
-    DateTime? FinalizedAt
+    DateTime? FinalizedAt,
+    StudyDetailsDto? Study = null
+);
+
+public record StudyDetailsDto(
+    string StudyInstanceUID,
+    DateTime StudyDate,
+    string Modality,
+    string Description,
+    PatientDetailsDto Patient
+);
+
+public record PatientDetailsDto(
+    string FirstName,
+    string LastName,
+    string MRN,
+    DateTime DateOfBirth,
+    string Gender
 );
 
 public record CreateReportRequest(

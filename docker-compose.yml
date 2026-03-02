@@ -15,6 +15,7 @@ services:
       - "1433:1433"
     volumes:
       - sqlserver-data:/var/opt/mssql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - pacs-network
     healthcheck:
@@ -75,9 +76,9 @@ services:
     ports:
       - "3000:80"
     environment:
-      # Use server IP for LAN access - change this to your server's IP
-      - VITE_API_URL=http://192.168.1.24:5000/api
-      - VITE_ORTHANC_URL=http://192.168.1.24:8042
+      # Use localhost for local access
+      - VITE_API_URL=http://localhost:5000/api
+      - VITE_ORTHANC_URL=http://localhost:8042
     networks:
       - pacs-network
     depends_on:

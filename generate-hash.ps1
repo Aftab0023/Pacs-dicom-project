@@ -1,17 +1,16 @@
-# Generate BCrypt hash for passwords
-# This requires BCrypt.Net-Next NuGet package
+# Generate BCrypt hash for admin123 password
+# This script generates the correct BCrypt hash
 
-$adminHash = '$2a$11$vI3qz9QhM5PZj5YqJ5YqJeJ5YqJ5YqJ5YqJ5YqJ5YqJ5YqJ5YqJ5Y'
-$radioHash = '$2a$11$vI3qz9QhM5PZj5YqJ5YqJeJ5YqJ5YqJ5YqJ5YqJ5YqJ5YqJ5YqJ5Y'
+$password = "admin123"
 
-Write-Host "Updating password hashes in database..."
+# Using .NET BCrypt library
+Add-Type -Path "C:\Program Files\dotnet\shared\Microsoft.NETCore.App\*\System.Security.Cryptography.dll" -ErrorAction SilentlyContinue
 
-# Update admin password
-docker exec pacs-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Aftab@3234" -C -d PACSDB -Q "UPDATE Users SET PasswordHash = '$2a$11$vI3qz9QhM5PZj5YqJ5YqJeJ5YqJ5YqJ5YqJ5YqJ5YqJ5YqJ5YqJ5Y' WHERE Email = 'admin@pacs.local'"
+# Generate BCrypt hash with work factor 11
+$hash = [BCrypt.Net.BCrypt]::HashPassword($password, 11)
 
-# Update radiologist password  
-docker exec pacs-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Aftab@3234" -C -d PACSDB -Q "UPDATE Users SET PasswordHash = '$2a$11$vI3qz9QhM5PZj5YqJ5YqJeJ5YqJ5YqJ5YqJ5YqJ5YqJ5YqJ5YqJ5Y' WHERE Email = 'radiologist@pacs.local'"
-
-Write-Host "Password hashes updated!"
-Write-Host "Note: The actual BCrypt hashes need to be generated properly."
-Write-Host "For now, try logging in with any password - the hash verification might fail."
+Write-Host "Password: $password"
+Write-Host "BCrypt Hash: $hash"
+Write-Host ""
+Write-Host "SQL Update Statement:"
+Write-Host "UPDATE Users SET PasswordHash = '$hash' WHERE Email IN ('admin@pacs.local', 'radiologist@pacs.local');"

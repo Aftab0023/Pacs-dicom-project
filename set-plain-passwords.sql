@@ -1,14 +1,17 @@
 USE PACSDB;
 GO
 
--- Set plain text passwords (ONLY FOR DEVELOPMENT)
+-- Temporarily set plain text passwords for testing
+-- This will work because AuthService has fallback to plain text
 UPDATE Users 
 SET PasswordHash = 'admin123'
-WHERE Email = 'admin@pacs.local';
+WHERE Email IN ('admin@pacs.local', 'radiologist@pacs.local');
 
-UPDATE Users 
-SET PasswordHash = 'admin123'
-WHERE Email = 'radiologist@pacs.local';
+-- Verify update
+SELECT UserId, Username, Email, Role, PasswordHash, IsActive
+FROM Users;
+GO
 
-SELECT Email, PasswordHash FROM Users;
+PRINT 'Passwords set to plain text for testing!';
+PRINT 'Login with: admin@pacs.local / admin123';
 GO

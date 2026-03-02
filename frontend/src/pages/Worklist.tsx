@@ -25,21 +25,26 @@ export default function Worklist() {
     queryFn: () => worklistApi.getWorklist(filters)
   })
 
-  // Corrected handleDownload logic for the Worklist
-  const handleDownload = async (studyId: number) => {
+  // Updated handleDownload to navigate to report preview
+  const handleViewReport = async (studyId: number) => {
     try {
-      // In a real scenario, you'd fetch the specific report ID for the study
-      const blob = await reportApi.downloadPdf(studyId); 
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Study-Report-${studyId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      // Fetch reports for this study
+      const reports = await reportApi.getStudyReports(studyId);
+      
+      if (!reports || reports.length === 0) {
+        alert("No report found for this study.");
+        return;
+      }
+      
+      // Find the finalized report or use the most recent one
+      const finalizedReport = reports.find((r: any) => r.status === 'Final' || r.status === 'Reported');
+      const reportToView = finalizedReport || reports[0];
+      
+      // Navigate to report preview page
+      navigate(`/report/preview/${reportToView.reportId}`);
     } catch (err) {
-      alert("Could not generate PDF. The report might not be finalized yet.");
+      console.error("Error fetching report:", err);
+      alert("Could not load report. The report might not exist yet.");
     }
   };
 
@@ -154,7 +159,7 @@ export default function Worklist() {
                           <button onClick={() => navigate(`/viewer/${study.studyId}`)} title="View Images" className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg"><HiOutlineEye size={18}/></button>
                           <button onClick={() => navigate(`/report/${study.studyId}`)} title="Write Report" className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded-lg"><HiOutlineDocumentText size={18}/></button>
                           {study.status === 'Reported' && (
-                            <button onClick={() => handleDownload(study.studyId)} title="Print PDF" className="p-2 text-slate-400 hover:bg-slate-400/10 rounded-lg"><HiOutlinePrinter size={18}/></button>
+                            <button onClick={() => handleViewReport(study.studyId)} title="View Report" className="p-2 text-slate-400 hover:bg-slate-400/10 rounded-lg"><HiOutlinePrinter size={18}/></button>
                           )}
                         </div>
                       </td>
@@ -186,7 +191,7 @@ export default function Worklist() {
                     <button onClick={() => navigate(`/viewer/${study.studyId}`)} className="flex-1 bg-blue-600 py-2.5 rounded-xl text-white font-bold text-sm shadow-lg shadow-blue-900/20">View</button>
                     <button onClick={() => navigate(`/report/${study.studyId}`)} className="flex-1 bg-slate-800 py-2.5 rounded-xl text-white font-bold text-sm">Report</button>
                     {study.status === 'Reported' && (
-                      <button onClick={() => handleDownload(study.studyId)} className="bg-slate-800 p-2.5 rounded-xl text-slate-400 border border-slate-700">
+                      <button onClick={() => handleViewReport(study.studyId)} className="bg-slate-800 p-2.5 rounded-xl text-slate-400 border border-slate-700">
                         <HiOutlinePrinter size={20} />
                       </button>
                     )}

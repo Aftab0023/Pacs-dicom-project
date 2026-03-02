@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { 
   HiMenu, HiX, HiLogout, HiViewGrid, 
-  HiClipboardList, HiBell 
+  HiClipboardList, HiBell, HiCog 
 } from 'react-icons/hi'
 
 // 1. Import your logo
@@ -56,6 +56,9 @@ export default function Layout({ children }: LayoutProps) {
               <div className="hidden md:ml-12 md:flex md:space-x-1">
                 <NavButton onClick={() => navigate('/')} active={isActive('/')} icon={<HiViewGrid />} label="Dashboard" />
                 <NavButton onClick={() => navigate('/worklist')} active={isActive('/worklist')} icon={<HiClipboardList />} label="Worklist" />
+                {user?.role === 'Admin' && (
+                  <NavButton onClick={() => navigate('/admin/settings')} active={isActive('/admin/settings')} icon={<HiCog />} label="Settings" />
+                )}
               </div>
             </div>
 
