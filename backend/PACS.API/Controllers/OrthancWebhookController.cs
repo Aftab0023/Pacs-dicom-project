@@ -19,26 +19,29 @@ public class OrthancWebhookController : ControllerBase
     }
 
     [HttpPost("webhook")]
-    [AllowAnonymous]  // Allow Orthanc to call this without authentication
-    public async Task<ActionResult> HandleWebhook([FromBody] OrthancWebhookPayload payload)
+    [AllowAnonymous]
+    public ActionResult HandleWebhook([FromBody] OrthancWebhookPayload payload)
     {
-        _logger.LogInformation($"Received Orthanc webhook: {payload.ChangeType} - {payload.ResourceType} - {payload.ID}");
+        _logger.LogInformation("Received webhook: {Type} - {ResourceType} - {ID}",
+            payload.ChangeType, payload.ResourceType, payload.ID);
 
-        try
+        if (payload.ChangeType == "StableStudy" && payload.ResourceType == "Study")
         {
-            if (payload.ChangeType == "StableStudy" && payload.ResourceType == "Study")
+            // Fire and forget — respond to Orthanc instantly, process in background
+            _ = Task.Run(async () =>
             {
-                await _orthancService.ProcessNewStudyAsync(payload.ID);
-                _logger.LogInformation($"Successfully processed study: {payload.ID}");
-            }
+                try
+                {
+                    await _orthancService.ProcessNewStudyAsync(payload.ID);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Background processing failed for study: {ID}", payload.ID);
+                }
+            });
+        }
 
-            return Ok();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Error processing webhook for study: {payload.ID}");
-            return StatusCode(500, new { message = "Error processing webhook" });
-        }
+        return Ok(); // Orthanc gets response in <1ms
     }
 
     [HttpGet("dicomweb/{studyInstanceUID}")]

@@ -22,7 +22,9 @@ export default function Worklist() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['worklist', filters],
-    queryFn: () => worklistApi.getWorklist(filters)
+    queryFn: () => worklistApi.getWorklist(filters),
+    staleTime: 30_000,        // cache for 30s — no refetch on tab focus
+    placeholderData: (prev) => prev  // keep old data while fetching new page
   })
 
   // Updated handleDownload to navigate to report preview

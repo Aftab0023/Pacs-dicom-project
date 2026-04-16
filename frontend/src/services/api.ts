@@ -1,6 +1,23 @@
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+// Runtime config (set in /config.js — editable after deployment)
+// Falls back to build-time .env values
+declare global {
+  interface Window {
+    __PACS_CONFIG__?: {
+      API_URL?: string
+      ORTHANC_URL?: string
+    }
+  }
+}
+
+const API_URL = window.__PACS_CONFIG__?.API_URL
+  || import.meta.env.VITE_API_URL
+  || 'http://localhost:5000/api'
+
+export const ORTHANC_URL = window.__PACS_CONFIG__?.ORTHANC_URL
+  || import.meta.env.VITE_ORTHANC_URL
+  || 'http://localhost:8042'
 
 const api = axios.create({
   baseURL: API_URL,

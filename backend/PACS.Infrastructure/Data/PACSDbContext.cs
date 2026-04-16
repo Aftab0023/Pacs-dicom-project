@@ -55,6 +55,10 @@ public class PACSDbContext : DbContext
         {
             entity.HasKey(e => e.StudyId);
             entity.HasIndex(e => e.StudyInstanceUID).IsUnique();
+            entity.HasIndex(e => e.Status);                          // fast status filter
+            entity.HasIndex(e => e.StudyDate);                       // fast date sort/filter
+            entity.HasIndex(e => new { e.Status, e.StudyDate });     // composite for worklist query
+            entity.HasIndex(e => e.IsPriority);                      // fast priority filter
             entity.Property(e => e.StudyInstanceUID).HasMaxLength(200).IsRequired();
             
             // New & Updated Fields

@@ -1,6 +1,9 @@
+using System.IO.Compression;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PACS.Core.Interfaces;
@@ -12,6 +15,23 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// In-memory cache — handles multiple concurrent requests without hitting DB
+builder.Services.AddMemoryCache(o =>
+{
+    o.SizeLimit = 512;          // max 512 cache entries
+    o.CompactionPercentage = 0.25;
+});
+
+// Response compression — reduces payload size dramatically
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "PACS API", Version = "v1" });
@@ -39,9 +59,18 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Database
-builder.Services.AddDbContext<PACSDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Database with connection pooling
+builder.Services.AddDbContextPool<PACSDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql =>
+        {
+            sql.CommandTimeout(30);
+            sql.EnableRetryOnFailure(3, TimeSpan.FromSeconds(2), null);
+        }
+    )
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTrackingWithIdentityResolution)
+);
 
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
@@ -91,7 +120,10 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IWorklistService, WorklistService>();
 builder.Services.AddScoped<IPatientShareService, PatientShareService>();
 builder.Services.AddScoped<ISystemSettingsService, SystemSettingsService>();
-builder.Services.AddHttpClient<IOrthancService, OrthancService>();
+builder.Services.AddHttpClient<IOrthancService, OrthancService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 var app = builder.Build();
 
@@ -103,6 +135,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 // CORS must be before Authentication/Authorization
+app.UseResponseCompression();
 app.UseCors("AllowAll");
 
 app.UseAuthentication();

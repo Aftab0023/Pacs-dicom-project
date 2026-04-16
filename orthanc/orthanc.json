@@ -39,7 +39,7 @@
   "HttpVerbose": false,
   "HttpsVerifyPeers": true,
   "UserMetadata": {},
-  "StableAge": 10,
+  "StableAge": 3,
   "StrictAetComparison": false,
   "DicomScpTimeout": 30,
   "SaveJobs": true,

@@ -19,12 +19,11 @@ services:
     networks:
       - pacs-network
     healthcheck:
-      # Added -C to trust certificate and fixed the healthcheck path
       test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P Aftab@3234 -C -Q 'SELECT 1' || exit 1"]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 120s
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
 
   pacs-api:
     build:
@@ -32,7 +31,7 @@ services:
       dockerfile: PACS.API/Dockerfile
     container_name: pacs-api
     ports:
-      - "5000:8080"
+      - "5000:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=PACSDB;User Id=sa;Password=Aftab@3234;TrustServerCertificate=True;
@@ -72,13 +71,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://192.168.1.39:5000/api
+        - VITE_ORTHANC_URL=http://192.168.1.39:8042
     container_name: pacs-frontend
     ports:
       - "3000:80"
-    environment:
-      # Use localhost for local access
-      - VITE_API_URL=http://localhost:5000/api
-      - VITE_ORTHANC_URL=http://localhost:8042
     networks:
       - pacs-network
     depends_on:

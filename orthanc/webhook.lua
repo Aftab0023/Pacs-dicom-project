@@ -1,12 +1,11 @@
 -- PACS Webhook Script (Lua)
 -- This script automatically sends new studies to the PACS API
 
-local API_URL = "http://pacs-api:8080/api/orthanc/webhook"
+local API_URL = "http://pacs-api:5000/api/orthanc/webhook"
 
 function OnStableStudy(studyId, tags, metadata)
     print("New stable study detected: " .. studyId)
-    
-    -- Create webhook payload matching the C# DTO structure
+
     local payload = {
         ChangeType = "StableStudy",
         ResourceType = "Study",
@@ -14,21 +13,29 @@ function OnStableStudy(studyId, tags, metadata)
         Path = "/studies/" .. studyId,
         Seq = 0
     }
-    
-    -- Convert payload to JSON
+
     local jsonPayload = DumpJson(payload)
-    
-    -- Send HTTP POST request to PACS API
-    local response = HttpPost(API_URL, jsonPayload, {
-        ["Content-Type"] = "application/json"
-    })
-    
-    if response then
-        print("Webhook sent successfully for study: " .. studyId)
-        print("Response: " .. response)
-    else
-        print("Failed to send webhook for study: " .. studyId)
+
+    -- Retry up to 3 times with a short delay
+    for attempt = 1, 3 do
+        local success, response = pcall(function()
+            return HttpPost(API_URL, jsonPayload, {
+                ["Content-Type"] = "application/json"
+            })
+        end)
+
+        if success and response then
+            print("Webhook sent successfully for study: " .. studyId .. " (attempt " .. attempt .. ")")
+            return
+        else
+            print("Webhook attempt " .. attempt .. " failed for study: " .. studyId .. ", retrying in 5s...")
+            if attempt < 3 then
+                os.execute("sleep 5")
+            end
+        end
     end
+
+    print("All webhook attempts failed for study: " .. studyId)
 end
 
 print("PACS Lua Webhook loaded successfully!")
