@@ -56,7 +56,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="hidden md:ml-12 md:flex md:space-x-1">
                 <NavButton onClick={() => navigate('/')} active={isActive('/')} icon={<HiViewGrid />} label="Dashboard" />
                 <NavButton onClick={() => navigate('/worklist')} active={isActive('/worklist')} icon={<HiClipboardList />} label="Worklist" />
-                {user?.role === 'Admin' && (
+                {['admin', 'administrator'].includes((user?.role ?? '').toLowerCase()) && (
                   <NavButton onClick={() => navigate('/admin/settings')} active={isActive('/admin/settings')} icon={<HiCog />} label="Settings" />
                 )}
               </div>
@@ -82,7 +82,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="hidden md:flex items-center space-x-4 border-l border-slate-800 pl-6">
                 <div className="flex flex-col items-end">
                   <span className="text-sm font-bold text-white">{user?.firstName} {user?.lastName}</span>
-                  <span className="text-[10px] font-black uppercase text-blue-500 tracking-widest">{user?.role}</span>
+                  <span className="text-[10px] font-black uppercase text-blue-500 tracking-widest">{user?.role || 'no role'}</span>
                 </div>
                 <button 
                   onClick={handleLogout} 
@@ -108,6 +108,9 @@ export default function Layout({ children }: LayoutProps) {
           <div className="md:hidden bg-slate-900 border-b border-slate-800 p-4 space-y-2 animate-in slide-in-from-top duration-300">
             <MobileNavButton onClick={() => {navigate('/'); setIsMobileMenuOpen(false)}} active={isActive('/')} icon={<HiViewGrid />} label="Dashboard" />
             <MobileNavButton onClick={() => {navigate('/worklist'); setIsMobileMenuOpen(false)}} active={isActive('/worklist')} icon={<HiClipboardList />} label="Worklist" />
+            {['admin', 'administrator'].includes((user?.role ?? '').toLowerCase()) && (
+              <MobileNavButton onClick={() => {navigate('/admin/settings'); setIsMobileMenuOpen(false)}} active={isActive('/admin/settings')} icon={<HiCog />} label="Settings" />
+            )}
             
             <div className="pt-4 mt-4 border-t border-slate-800 space-y-4">
                <div className="px-4">

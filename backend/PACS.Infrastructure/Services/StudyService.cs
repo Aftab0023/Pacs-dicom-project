@@ -91,9 +91,9 @@ public class StudyService : IStudyService
         if (filter.IsPriority.HasValue)
             query = query.Where(s => s.IsPriority == filter.IsPriority.Value);
 
-        // Count + data in parallel
-        var countTask = query.CountAsync();
-        var studiesTask = query
+        // Count + data sequentially — DbContext is NOT thread-safe, parallel queries cause concurrency errors
+        var totalCount = await query.CountAsync();
+        var studies = await query
             .OrderByDescending(s => s.IsPriority)
             .ThenByDescending(s => s.StudyDate)
             .Skip((filter.Page - 1) * filter.PageSize)
@@ -117,14 +117,11 @@ public class StudyService : IStudyService
             ))
             .ToListAsync();
 
-        await Task.WhenAll(countTask, studiesTask);
-        var result = (await studiesTask, await countTask);
-
-        // Only cache unfiltered/simple queries — search results change too fast
+        // Cache unfiltered/simple queries only
         if (string.IsNullOrEmpty(filter.SearchTerm))
-            _cache.Set(cacheKey, result, ShortCache);
+            _cache.Set(cacheKey, (studies, totalCount), ShortCache);
 
-        return result;
+        return (studies, totalCount);
     }
 
     public async Task<StudyDetailDto?> GetStudyDetailAsync(int studyId)

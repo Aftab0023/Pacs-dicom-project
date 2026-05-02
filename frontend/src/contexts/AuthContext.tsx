@@ -37,6 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string) => {
+    // Clear any stale session before logging in
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
     const response = await authApi.login(email, password)
     setToken(response.token)
     setUser(response.user)

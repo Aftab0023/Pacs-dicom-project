@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { viewerSharingApi } from '../services/api'
+import { viewerSharingApi, getOrthancUrl } from '../services/api'
 import { HiOutlineExclamationCircle, HiOutlineClock } from 'react-icons/hi'
 
 export default function SharedViewer() {
@@ -8,8 +8,6 @@ export default function SharedViewer() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [shareData, setShareData] = useState<any>(null)
-  
-  const ORTHANC_URL = import.meta.env.VITE_ORTHANC_URL || 'http://localhost:8042'
 
   useEffect(() => {
     const validateAndLoadShare = async () => {
@@ -22,10 +20,9 @@ export default function SharedViewer() {
       try {
         const response = await viewerSharingApi.getShareLink(token)
         setShareData(response)
-        
-        // Automatically redirect to OHIF viewer
         if (response.studyInstanceUID) {
-          window.location.href = `${ORTHANC_URL}/ohif/viewer?StudyInstanceUIDs=${response.studyInstanceUID}`
+          // Read URL at redirect time — picks up config.js value
+          window.location.href = `${getOrthancUrl()}/ohif/viewer?StudyInstanceUIDs=${response.studyInstanceUID}`
         }
       } catch (err: any) {
         setError(err.response?.data?.message || 'Failed to load shared study')

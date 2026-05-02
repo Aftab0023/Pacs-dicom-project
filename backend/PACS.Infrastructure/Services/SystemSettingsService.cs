@@ -133,7 +133,7 @@ public class SystemSettingsService : ISystemSettingsService
             InstitutionAddress = GetValue(reportSettings, "Report.InstitutionAddress", ""),
             InstitutionPhone = GetValue(reportSettings, "Report.InstitutionPhone", ""),
             InstitutionEmail = GetValue(reportSettings, "Report.InstitutionEmail", ""),
-            LogoUrl = GetValue(reportSettings, "Report.LogoUrl", null),
+            LogoUrl = GetValue(reportSettings, "Report.LogoUrl", ""),
             FooterText = GetValue(reportSettings, "Report.FooterText", ""),
             DigitalSignatureText = GetValue(reportSettings, "Report.DigitalSignatureText", "Electronically signed by"),
             ShowWatermark = bool.Parse(GetValue(reportSettings, "Report.ShowWatermark", "false")),

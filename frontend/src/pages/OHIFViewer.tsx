@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { HiArrowLeft, HiOutlineServer, HiOutlineExclamationCircle, HiExternalLink } from 'react-icons/hi'
 import { RiDnaLine } from 'react-icons/ri'
+import { getOrthancUrl } from '../services/api'
 
 export default function OHIFViewer() {
   const [searchParams] = useSearchParams()
@@ -9,8 +10,7 @@ export default function OHIFViewer() {
   const studyInstanceUIDs = searchParams.get('StudyInstanceUIDs')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
-  const ORTHANC_URL = import.meta.env.VITE_ORTHANC_URL || 'http://localhost:8042'
+  // Do NOT cache at mount time — call at redirect time so config.js is always read
 
   useEffect(() => {
     if (!studyInstanceUIDs) {
@@ -21,7 +21,7 @@ export default function OHIFViewer() {
 
     const findOrthancStudy = async () => {
       try {
-        const response = await fetch(`${ORTHANC_URL}/tools/find`, {
+        const response = await fetch(`${getOrthancUrl()}/tools/find`, {
           method: 'POST',
           headers: {
             'Authorization': 'Basic ' + btoa('orthanc:orthanc'),
@@ -46,11 +46,10 @@ export default function OHIFViewer() {
           return
         }
 
-        // Success - redirecting to OHIF
-        const ohifUrl = `${ORTHANC_URL}/ohif/viewer?StudyInstanceUIDs=${encodeURIComponent(studyInstanceUIDs)}`
+        const ohifUrl = `${getOrthancUrl()}/ohif/viewer?StudyInstanceUIDs=${encodeURIComponent(studyInstanceUIDs)}`
         window.location.href = ohifUrl
       } catch (err) {
-        setError('Connection Refused: Ensure the Orthanc Docker container is running on port 8042.')
+        setError('Connection Refused: Ensure the Orthanc server is running on port 8042.')
         setLoading(false)
       }
     }
@@ -121,7 +120,7 @@ export default function OHIFViewer() {
                 <HiArrowLeft /> Back to List
               </button>
               <button
-                onClick={() => window.open(`${ORTHANC_URL}/app/explorer.html`, '_blank')}
+                onClick={() => window.open(`${getOrthancUrl()}/app/explorer.html`, '_blank')}
                 className="flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95"
               >
                 Open Orthanc Explorer

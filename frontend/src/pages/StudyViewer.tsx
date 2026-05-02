@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { worklistApi } from '../services/api'
+import { worklistApi, getOrthancUrl } from '../services/api'
 import Layout from '../components/Layout'
 import ViewerShareDialog from '../components/ViewerShareDialog'
 import { useState } from 'react'
@@ -21,8 +21,6 @@ export default function StudyViewer() {
   const { studyId } = useParams<{ studyId: string }>()
   const navigate = useNavigate()
   const [showShareDialog, setShowShareDialog] = useState(false)
-  
-  const ORTHANC_URL = import.meta.env.VITE_ORTHANC_URL || 'http://localhost:8042'
 
   const { data: study, isLoading } = useQuery({
     queryKey: ['study', studyId],
@@ -150,7 +148,7 @@ export default function StudyViewer() {
                 </div>
                 
                 <button
-                  onClick={() => window.open(`${ORTHANC_URL}/ohif/viewer?StudyInstanceUIDs=${study.studyInstanceUID}`, '_blank')}
+                  onClick={() => window.open(`${getOrthancUrl()}/ohif/viewer?StudyInstanceUIDs=${study.studyInstanceUID}`, '_blank')}
                   className="group flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all shadow-xl shadow-blue-900/40 active:scale-95"
                 >
                   Launch Full Viewer

@@ -20,11 +20,12 @@ export default function Worklist() {
     pageSize: 20
   })
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['worklist', filters],
     queryFn: () => worklistApi.getWorklist(filters),
-    staleTime: 30_000,        // cache for 30s — no refetch on tab focus
-    placeholderData: (prev) => prev  // keep old data while fetching new page
+    staleTime: 15_000,
+    retry: 2,
+    placeholderData: undefined  // don't show stale empty data — show loading instead
   })
 
   // Updated handleDownload to navigate to report preview
@@ -116,6 +117,14 @@ export default function Worklist() {
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
             <p className="text-slate-400">Fetching studies...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-3">
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-center max-w-md">
+              <p className="text-red-400 font-bold mb-1">Failed to load worklist</p>
+              <p className="text-slate-500 text-xs">{(error as any)?.message || 'API connection error'}</p>
+              <p className="text-slate-600 text-xs mt-1">Check that the API is running and config.js has the correct IP</p>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">

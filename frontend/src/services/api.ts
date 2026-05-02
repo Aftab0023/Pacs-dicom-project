@@ -1,7 +1,8 @@
 import axios from 'axios'
 
-// Runtime config (set in /config.js — editable after deployment)
-// Falls back to build-time .env values
+// ── Runtime config ────────────────────────────────────────────
+// Reads window.__PACS_CONFIG__ set by /config.js at page load.
+// Edit config.js after deployment — no rebuild needed.
 declare global {
   interface Window {
     __PACS_CONFIG__?: {
@@ -11,22 +12,36 @@ declare global {
   }
 }
 
-const API_URL = window.__PACS_CONFIG__?.API_URL
-  || import.meta.env.VITE_API_URL
-  || 'http://localhost:5000/api'
+// Always read at call time so config.js changes take effect on refresh
+export function getApiUrl(): string {
+  return (
+    window.__PACS_CONFIG__?.API_URL ||
+    import.meta.env.VITE_API_URL ||
+    'http://localhost:5000/api'
+  )
+}
 
-export const ORTHANC_URL = window.__PACS_CONFIG__?.ORTHANC_URL
-  || import.meta.env.VITE_ORTHANC_URL
-  || 'http://localhost:8042'
+export function getOrthancUrl(): string {
+  return (
+    window.__PACS_CONFIG__?.ORTHANC_URL ||
+    import.meta.env.VITE_ORTHANC_URL ||
+    'http://localhost:8042'
+  )
+}
 
+// Use getOrthancUrl() directly in components — never import ORTHANC_URL as a constant
+
+// ── Axios instance ────────────────────────────────────────────
 const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  timeout: 15000,
+  headers: { 'Content-Type': 'application/json' }
 })
 
+// Inject baseURL + token on every request — reads config.js at runtime
 api.interceptors.request.use((config) => {
+  // Always use the current runtime URL (not a stale build-time value)
+  config.baseURL = getApiUrl()
+
   const token = localStorage.getItem('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
@@ -34,18 +49,20 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Add this below your request interceptor
+// Auto-logout on 401
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
     }
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
-);
+)
 
+// ── Auth ──────────────────────────────────────────────────────
 export const authApi = {
   login: async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password })
@@ -56,6 +73,7 @@ export const authApi = {
   }
 }
 
+// ── Worklist / Studies ────────────────────────────────────────
 export const worklistApi = {
   getWorklist: async (filters: any) => {
     const response = await api.get('/worklist', { params: filters })
@@ -78,11 +96,12 @@ export const worklistApi = {
     return response.data
   },
   getStats: async () => {
-    const response = await api.get('/worklist/stats');
-    return response.data;
+    const response = await api.get('/worklist/stats')
+    return response.data
   }
 }
 
+// ── Reports ───────────────────────────────────────────────────
 export const reportApi = {
   getReport: async (reportId: number) => {
     const response = await api.get(`/report/${reportId}`)
@@ -108,10 +127,9 @@ export const reportApi = {
     const response = await api.get(`/report/${reportId}/pdf`, { responseType: 'blob' })
     return response.data
   }
-  
 }
 
-// Enterprise Features - Modality Worklist
+// ── Modality Worklist ─────────────────────────────────────────
 export const worklistEnterpriseApi = {
   getEntries: async (filters: any) => {
     const response = await api.get('/worklist/entries', { params: filters })
@@ -135,7 +153,7 @@ export const worklistEnterpriseApi = {
   }
 }
 
-// Enterprise Features - Routing Rules
+// ── Routing Rules ─────────────────────────────────────────────
 export const routingApi = {
   getRules: async () => {
     const response = await api.get('/routing/rules')
@@ -159,7 +177,7 @@ export const routingApi = {
   }
 }
 
-// Enterprise Features - Permissions & Roles
+// ── Permissions & Roles ───────────────────────────────────────
 export const permissionApi = {
   getPermissions: async () => {
     const response = await api.get('/permissions')
@@ -191,7 +209,7 @@ export const permissionApi = {
   }
 }
 
-// Enterprise Features - Audit Logs
+// ── Audit Logs ────────────────────────────────────────────────
 export const auditApi = {
   getLogs: async (filters: any) => {
     const response = await api.get('/audit/logs', { params: filters })
@@ -203,13 +221,10 @@ export const auditApi = {
   }
 }
 
-// OHIF Viewer - Patient Sharing
+// ── Patient Sharing ───────────────────────────────────────────
 export const viewerSharingApi = {
   createShareLink: async (studyInstanceUID: string, expiresInHours: number = 24) => {
-    const response = await api.post('/viewer/share', {
-      studyInstanceUID,
-      expiresInHours
-    })
+    const response = await api.post('/viewer/share', { studyInstanceUID, expiresInHours })
     return response.data
   },
   getShareLink: async (shareToken: string) => {
@@ -221,16 +236,12 @@ export const viewerSharingApi = {
     return response.data
   },
   sendToPatient: async (studyInstanceUID: string, patientEmail: string, message?: string) => {
-    const response = await api.post('/viewer/send-to-patient', {
-      studyInstanceUID,
-      patientEmail,
-      message
-    })
+    const response = await api.post('/viewer/send-to-patient', { studyInstanceUID, patientEmail, message })
     return response.data
   }
 }
 
-// System Settings (Admin only)
+// ── System Settings ───────────────────────────────────────────
 export const systemSettingsApi = {
   getAllSettings: async () => {
     const response = await api.get('/SystemSettings')
